@@ -240,3 +240,26 @@ export const googleCallback = async (req: Request, res: Response): Promise<void>
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   res.redirect(`${frontendUrl}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
 };
+
+/**
+ * @swagger
+ * /auth/facebook:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Start Facebook OAuth login
+ *     responses:
+ *       302:
+ *         description: Redirects to Facebook
+ */
+export const facebookCallback = async (req: Request, res: Response): Promise<void> => {
+  const user = req.user as any;
+
+  const accessToken = generateAccessToken(user._id.toString());
+  const refreshToken = generateRefreshToken(user._id.toString());
+
+  user.refreshTokens.push(refreshToken);
+  await user.save();
+
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  res.redirect(`${frontendUrl}/auth/callback?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+};

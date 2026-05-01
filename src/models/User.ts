@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password?: string;
   profileImage: string;
   googleId?: string;
+  facebookId?: string;
   refreshTokens: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +19,7 @@ const userSchema = new Schema<IUser>(
     password: { type: String },
     profileImage: { type: String, default: '' },
     googleId: { type: String },
+    facebookId: { type: String },
     refreshTokens: [{ type: String }],
   },
   { timestamps: true }

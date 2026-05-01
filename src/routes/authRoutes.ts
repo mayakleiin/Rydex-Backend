@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import passport from 'passport';
-import { register, login, logout, refresh, googleCallback } from '../controllers/authController';
+import { register, login, logout, refresh, googleCallback, facebookCallback } from '../controllers/authController';
 
 /**
  * @swagger
@@ -20,6 +20,13 @@ router.get(
   '/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: '/auth/login' }),
   googleCallback
+);
+
+router.get('/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+router.get(
+  '/facebook/callback',
+  passport.authenticate('facebook', { session: false, failureRedirect: '/auth/login' }),
+  facebookCallback
 );
 
 export default router;
