@@ -224,26 +224,30 @@ export const createCar = async (
     // If parsing fails, continue with defaults
   }
 
-  const car = await Car.create({
-    owner: req.userId,
-    title: title.trim(),
-    description: description.trim(),
-    brand: brand.trim(),
-    model: model.trim(),
-    year: Number(year),
-    color: color?.trim(),
-    seats: seats ? Number(seats) : undefined,
-    transmission,
-    fuelType,
-    location: location?.trim(),
-    pricePerDay: Number(pricePerDay),
-    image: req.file?.filename || "",
-    features,
-    rules,
-  });
+  try {
+    const car = await Car.create({
+      owner: req.userId,
+      title: title.trim(),
+      description: description.trim(),
+      brand: brand.trim(),
+      model: model.trim(),
+      year: Number(year),
+      color: color?.trim(),
+      seats: seats ? Number(seats) : undefined,
+      transmission,
+      fuelType,
+      location: location?.trim(),
+      pricePerDay: Number(pricePerDay),
+      image: req.file?.filename || "",
+      features,
+      rules,
+    });
 
-  await car.populate("owner", "username profileImage");
-  res.status(201).json(car);
+    await car.populate("owner", "username profileImage");
+    res.status(201).json(car);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || "Failed to create car listing" });
+  }
 };
 
 /**

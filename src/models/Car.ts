@@ -9,8 +9,8 @@ export interface ICar {
   year: number;
   color?: string;
   seats?: number;
-  transmission: "manual" | "automatic" | "cvt" | "robotic" | "dct";
-  fuelType: "gasoline" | "diesel" | "electric" | "hybrid";
+  transmission: "Manual" | "Automatic" | "CVT" | "Robotic" | "DCT";
+  fuelType: "Gasoline" | "Diesel" | "Electric" | "Hybrid";
   location?: string;
   pricePerDay: number;
   image: string;

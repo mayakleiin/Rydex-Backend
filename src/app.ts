@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -42,5 +42,10 @@ app.use('/ai', aiRoutes);
 
 // Swagger docs
 setupSwagger(app);
+
+// Global JSON error handler — must be last
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  res.status(500).json({ message: err.message || 'Internal server error' });
+});
 
 export default app;
