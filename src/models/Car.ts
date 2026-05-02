@@ -7,7 +7,6 @@ export interface ICar {
   brand: string;
   model: string;
   year: number;
-  color?: string;
   seats?: number;
   transmission: "Manual" | "Automatic" | "CVT" | "Robotic" | "DCT";
   fuelType: "Gasoline" | "Diesel" | "Electric" | "Hybrid";
@@ -35,7 +34,6 @@ const carSchema = new Schema<ICar>(
     brand: { type: String, required: true, trim: true },
     model: { type: String, required: true, trim: true },
     year: { type: Number, required: true },
-    color: { type: String, trim: true },
     seats: { type: Number },
     transmission: {
       type: String,
