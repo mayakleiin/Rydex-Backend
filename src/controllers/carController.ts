@@ -5,6 +5,26 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import Car from "../models/Car";
 import Comment from "../models/Comment";
 
+// Normalize features to always be string[]
+const normalizeFeatures = (features: unknown): string[] => {
+  if (!features) return [];
+
+  if (typeof features === "string") {
+    try {
+      const parsed = JSON.parse(features);
+      return Array.isArray(parsed) ? parsed : [features];
+    } catch {
+      return [features];
+    }
+  }
+
+  if (Array.isArray(features)) {
+    return features.flatMap((feature) => normalizeFeatures(feature));
+  }
+
+  return [];
+};
+
 /**
  * @swagger
  * /cars:
@@ -205,23 +225,17 @@ export const createCar = async (
     return;
   }
 
-  let features = [];
+  const features = normalizeFeatures(rawFeatures);
   let rules = {};
 
   try {
-    if (typeof rawFeatures === "string") {
-      features = JSON.parse(rawFeatures);
-    } else if (Array.isArray(rawFeatures)) {
-      features = rawFeatures;
-    }
-
     if (typeof rawRules === "string") {
       rules = JSON.parse(rawRules);
-    } else if (typeof rawRules === "object") {
+    } else if (rawRules && typeof rawRules === "object") {
       rules = rawRules;
     }
   } catch (err) {
-    // If parsing fails, continue with defaults
+    rules = {};
   }
 
   try {
@@ -317,8 +331,8 @@ export const updateCar = async (
     updates.location = "";
   }
 
-  if (typeof updates.features === "string") {
-    updates.features = JSON.parse(updates.features);
+  if (updates.features !== undefined) {
+    updates.features = normalizeFeatures(updates.features);
   }
 
   if (typeof updates.rules === "string") {
@@ -346,6 +360,7 @@ export const updateCar = async (
 
   res.json(updated);
 };
+
 /**
  * @swagger
  * /cars/{id}:
