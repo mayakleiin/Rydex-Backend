@@ -14,6 +14,7 @@ export interface ICar {
   location?: string;
   pricePerDay: number;
   image: string;
+  images: string[];
   features?: string[];
   rules?: {
     noSmoking?: boolean;
@@ -49,6 +50,7 @@ const carSchema = new Schema<ICar>(
     location: { type: String, trim: true },
     pricePerDay: { type: Number, required: true },
     image: { type: String, default: "" },
+    images: [{ type: String }],
     features: [{ type: String }],
     rules: {
       noSmoking: { type: Boolean },

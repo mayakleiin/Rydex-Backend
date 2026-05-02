@@ -5,6 +5,26 @@ import { AuthRequest } from "../middleware/authMiddleware";
 import Car from "../models/Car";
 import Comment from "../models/Comment";
 
+// Normalize features to always be string[]
+const normalizeFeatures = (features: unknown): string[] => {
+  if (!features) return [];
+
+  if (typeof features === "string") {
+    try {
+      const parsed = JSON.parse(features);
+      return Array.isArray(parsed) ? parsed : [features];
+    } catch {
+      return [features];
+    }
+  }
+
+  if (Array.isArray(features)) {
+    return features.flatMap((feature) => normalizeFeatures(feature));
+  }
+
+  return [];
+};
+
 /**
  * @swagger
  * /cars:
@@ -205,26 +225,24 @@ export const createCar = async (
     return;
   }
 
-  let features = [];
+  const features = normalizeFeatures(rawFeatures);
   let rules = {};
 
   try {
-    if (typeof rawFeatures === "string") {
-      features = JSON.parse(rawFeatures);
-    } else if (Array.isArray(rawFeatures)) {
-      features = rawFeatures;
-    }
-
     if (typeof rawRules === "string") {
       rules = JSON.parse(rawRules);
-    } else if (typeof rawRules === "object") {
+    } else if (rawRules && typeof rawRules === "object") {
       rules = rawRules;
     }
   } catch (err) {
-    // If parsing fails, continue with defaults
+    rules = {};
   }
 
   try {
+    const uploadedImages =
+      (req.files as Express.Multer.File[] | undefined)?.map(
+        (file) => file.filename,
+      ) ?? [];
     const car = await Car.create({
       owner: req.userId,
       title: title.trim(),
@@ -238,7 +256,8 @@ export const createCar = async (
       fuelType,
       location: location?.trim(),
       pricePerDay: Number(pricePerDay),
-      image: req.file?.filename || "",
+      image: uploadedImages[0] || "",
+      images: uploadedImages,
       features,
       rules,
     });
@@ -246,7 +265,9 @@ export const createCar = async (
     await car.populate("owner", "username profileImage");
     res.status(201).json(car);
   } catch (err: any) {
-    res.status(500).json({ message: err.message || "Failed to create car listing" });
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to create car listing" });
   }
 };
 
@@ -277,6 +298,7 @@ export const updateCar = async (
   res: Response,
 ): Promise<void> => {
   const car = await Car.findById(req.params.id);
+
   if (!car) {
     res.status(404).json({ message: "Car not found" });
     return;
@@ -287,30 +309,93 @@ export const updateCar = async (
     return;
   }
 
-  const updates: Record<string, unknown> = { ...req.body };
-  // Convert numeric fields
-  if (updates.year) {
+  const updates: Record<string, any> = { ...req.body };
+  const unsetFields: Record<string, ""> = {};
+
+  if (updates.year !== undefined) {
     if (!/^\d{4}$/.test(String(updates.year))) {
-      res.status(400).json({
-        message: "Year must be exactly 4 digits",
-      });
+      res.status(400).json({ message: "Year must be exactly 4 digits" });
       return;
     }
+
     updates.year = Number(updates.year);
   }
-  if (updates.pricePerDay) updates.pricePerDay = Number(updates.pricePerDay);
-  if (updates.seats) updates.seats = Number(updates.seats);
 
-  if (req.file) {
-    if (car.image) {
-      const oldPath = path.join(process.cwd(), "uploads", car.image);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
-    updates.image = req.file.filename;
+  if (updates.pricePerDay !== undefined) {
+    updates.pricePerDay = Number(updates.pricePerDay);
   }
 
-  const updated = await Car.findByIdAndUpdate(req.params.id, updates, {
+  if (updates.seats === "") {
+    delete updates.seats;
+    unsetFields.seats = "";
+  } else if (updates.seats !== undefined) {
+    updates.seats = Number(updates.seats);
+  }
+
+  if (updates.location === "") {
+    updates.location = "";
+  }
+
+  if (updates.features !== undefined) {
+    updates.features = normalizeFeatures(updates.features);
+  }
+
+  if (typeof updates.rules === "string") {
+    updates.rules = JSON.parse(updates.rules);
+  }
+
+  const uploadedImages =
+    (req.files as Express.Multer.File[] | undefined)?.map(
+      (file) => file.filename,
+    ) ?? [];
+
+  let keptImages: string[] = [];
+
+  if (updates.keepImages !== undefined) {
+    try {
+      keptImages =
+        typeof updates.keepImages === "string"
+          ? JSON.parse(updates.keepImages)
+          : Array.isArray(updates.keepImages)
+            ? updates.keepImages
+            : [];
+    } catch {
+      keptImages = [];
+    }
+  } else {
+    keptImages = car.images?.length ? car.images : car.image ? [car.image] : [];
+  }
+
+  delete updates.keepImages;
+
+  const currentImages = car.images?.length
+    ? car.images
+    : car.image
+      ? [car.image]
+      : [];
+
+  const nextImages = [...keptImages, ...uploadedImages].slice(0, 8);
+
+  const imagesToDelete = currentImages.filter(
+    (image) => !nextImages.includes(image),
+  );
+
+  imagesToDelete.forEach((image) => {
+    const imagePath = path.join(process.cwd(), "uploads", image);
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+  });
+
+  updates.images = nextImages;
+  updates.image = nextImages[0] ?? "";
+
+  const updateQuery =
+    Object.keys(unsetFields).length > 0
+      ? { $set: updates, $unset: unsetFields }
+      : { $set: updates };
+
+  const updated = await Car.findByIdAndUpdate(req.params.id, updateQuery, {
     new: true,
+    runValidators: true,
   }).populate("owner", "username profileImage");
 
   res.json(updated);
