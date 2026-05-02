@@ -239,6 +239,10 @@ export const createCar = async (
   }
 
   try {
+    const uploadedImages =
+      (req.files as Express.Multer.File[] | undefined)?.map(
+        (file) => file.filename,
+      ) ?? [];
     const car = await Car.create({
       owner: req.userId,
       title: title.trim(),
@@ -252,7 +256,8 @@ export const createCar = async (
       fuelType,
       location: location?.trim(),
       pricePerDay: Number(pricePerDay),
-      image: req.file?.filename || "",
+      image: uploadedImages[0] || "",
+      images: uploadedImages,
       features,
       rules,
     });
@@ -339,14 +344,49 @@ export const updateCar = async (
     updates.rules = JSON.parse(updates.rules);
   }
 
-  if (req.file) {
-    if (car.image) {
-      const oldPath = path.join(process.cwd(), "uploads", car.image);
-      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-    }
+  const uploadedImages =
+    (req.files as Express.Multer.File[] | undefined)?.map(
+      (file) => file.filename,
+    ) ?? [];
 
-    updates.image = req.file.filename;
+  let keptImages: string[] = [];
+
+  if (updates.keepImages !== undefined) {
+    try {
+      keptImages =
+        typeof updates.keepImages === "string"
+          ? JSON.parse(updates.keepImages)
+          : Array.isArray(updates.keepImages)
+            ? updates.keepImages
+            : [];
+    } catch {
+      keptImages = [];
+    }
+  } else {
+    keptImages = car.images?.length ? car.images : car.image ? [car.image] : [];
   }
+
+  delete updates.keepImages;
+
+  const currentImages = car.images?.length
+    ? car.images
+    : car.image
+      ? [car.image]
+      : [];
+
+  const nextImages = [...keptImages, ...uploadedImages].slice(0, 8);
+
+  const imagesToDelete = currentImages.filter(
+    (image) => !nextImages.includes(image),
+  );
+
+  imagesToDelete.forEach((image) => {
+    const imagePath = path.join(process.cwd(), "uploads", image);
+    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+  });
+
+  updates.images = nextImages;
+  updates.image = nextImages[0] ?? "";
 
   const updateQuery =
     Object.keys(unsetFields).length > 0
