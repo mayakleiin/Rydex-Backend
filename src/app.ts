@@ -11,6 +11,7 @@ import userRoutes from './routes/userRoutes';
 import carRoutes from './routes/carRoutes';
 import commentRoutes from './routes/commentRoutes';
 import aiRoutes from './routes/aiRoutes';
+import bookingRoutes from './routes/bookingRoutes';
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ app.use('/users', userRoutes);
 app.use('/cars', carRoutes);
 app.use('/comments', commentRoutes);
 app.use('/ai', aiRoutes);
+app.use('/bookings', bookingRoutes);
 
 // Swagger docs
 setupSwagger(app);
