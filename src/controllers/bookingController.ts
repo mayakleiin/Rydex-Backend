@@ -23,6 +23,20 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
       res.status(400).json({ message: 'You cannot book your own car' });
       return;
     }
+    const existingBooking = await Booking.findOne({
+  car: car._id,
+  renter: req.userId,
+  status: 'pending',
+  pickupDate: { $lte: new Date(returnDate) },
+  returnDate: { $gte: new Date(pickupDate) },
+});
+
+if (existingBooking) {
+  res.status(400).json({
+    message: 'You already have a pending booking request for this car and date range',
+  });
+  return;
+}
 
     const booking = await Booking.create({
       car: car._id,
