@@ -12,7 +12,7 @@ export interface ICar {
   transmission: "manual" | "automatic" | "cvt" | "robotic" | "dct";
   fuelType: "gasoline" | "diesel" | "electric" | "hybrid";
   location?: string;
-  pricePerDay?: number;
+  pricePerDay: number;
   image: string;
   features?: string[];
   rules?: {
@@ -38,16 +38,16 @@ const carSchema = new Schema<ICar>(
     seats: { type: Number },
     transmission: {
       type: String,
-      enum: ["manual", "automatic", "cvt", "robotic", "dct"],
+      enum: ["Manual", "Automatic", "CVT", "Robotic", "DCT"],
       required: true,
     },
     fuelType: {
       type: String,
-      enum: ["gasoline", "diesel", "electric", "hybrid"],
+      enum: ["Gasoline", "Diesel", "Electric", "Hybrid"],
       required: true,
     },
     location: { type: String, trim: true },
-    pricePerDay: { type: Number },
+    pricePerDay: { type: Number, required: true },
     image: { type: String, default: "" },
     features: [{ type: String }],
     rules: {

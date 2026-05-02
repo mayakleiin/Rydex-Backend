@@ -128,7 +128,7 @@ export const getCar = async (
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, description, brand, model, year, location, pricePerDay]
+ *             required: [title, description, brand, model, year, transmission, fuelType, pricePerDay]
  *             properties:
  *               title:
  *                 type: string
@@ -139,17 +139,19 @@ export const getCar = async (
  *               model:
  *                 type: string
  *               year:
- *                 type: integer
+ *                 type: string
+ *                 description: 4-digit year (e.g., 2020)
+ *                 pattern: '^\d{4}$'
  *               color:
  *                 type: string
  *               seats:
  *                 type: integer
  *               transmission:
  *                 type: string
- *                 enum: [manual, automatic, cvt, robotic, dct]
+ *                 enum: [Manual, Automatic, CVT, Robotic, DCT]
  *               fuelType:
  *                 type: string
- *                 enum: [gasoline, diesel, electric, hybrid]
+ *                 enum: [Gasoline, Diesel, Electric, Hybrid]
  *               location:
  *                 type: string
  *               pricePerDay:
@@ -161,7 +163,7 @@ export const getCar = async (
  *       201:
  *         description: Car listing created
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields or invalid year format
  *       401:
  *         description: Unauthorized
  */
@@ -181,8 +183,8 @@ export const createCar = async (
     fuelType,
     location,
     pricePerDay,
-    features,
-    rules,
+    features: rawFeatures,
+    rules: rawRules,
   } = req.body;
 
   if (
@@ -191,16 +193,35 @@ export const createCar = async (
     !brand?.trim() ||
     !model?.trim() ||
     !year ||
+    !/^\d{4}$/.test(String(year)) ||
     !transmission ||
-    !fuelType
+    !fuelType ||
+    !pricePerDay
   ) {
-    res
-      .status(400)
-      .json({
-        message:
-          "Required fields: title, description, brand, model, year, transmission, fuelType",
-      });
+    res.status(400).json({
+      message:
+        "Required fields: title, description, brand, model, year (4 digits), transmission, fuelType, pricePerDay",
+    });
     return;
+  }
+
+  let features = [];
+  let rules = {};
+
+  try {
+    if (typeof rawFeatures === "string") {
+      features = JSON.parse(rawFeatures);
+    } else if (Array.isArray(rawFeatures)) {
+      features = rawFeatures;
+    }
+
+    if (typeof rawRules === "string") {
+      rules = JSON.parse(rawRules);
+    } else if (typeof rawRules === "object") {
+      rules = rawRules;
+    }
+  } catch (err) {
+    // If parsing fails, continue with defaults
   }
 
   const car = await Car.create({
@@ -215,10 +236,10 @@ export const createCar = async (
     transmission,
     fuelType,
     location: location?.trim(),
-    pricePerDay: pricePerDay ? Number(pricePerDay) : undefined,
+    pricePerDay: Number(pricePerDay),
     image: req.file?.filename || "",
-    features: features || [],
-    rules: rules || {},
+    features,
+    rules,
   });
 
   await car.populate("owner", "username profileImage");
@@ -264,7 +285,15 @@ export const updateCar = async (
 
   const updates: Record<string, unknown> = { ...req.body };
   // Convert numeric fields
-  if (updates.year) updates.year = Number(updates.year);
+  if (updates.year) {
+    if (!/^\d{4}$/.test(String(updates.year))) {
+      res.status(400).json({
+        message: "Year must be exactly 4 digits",
+      });
+      return;
+    }
+    updates.year = Number(updates.year);
+  }
   if (updates.pricePerDay) updates.pricePerDay = Number(updates.pricePerDay);
   if (updates.seats) updates.seats = Number(updates.seats);
 
