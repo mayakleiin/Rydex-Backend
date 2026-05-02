@@ -21,7 +21,7 @@ import Comment from '../models/Comment';
  *         schema:
  *           type: integer
  *       - in: query
- *         name: make
+ *         name: brand
  *         schema:
  *           type: string
  *       - in: query
@@ -42,7 +42,7 @@ export const getCars = async (req: AuthRequest, res: Response): Promise<void> =>
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
-  if (req.query.make) query.make = new RegExp(req.query.make as string, 'i');
+  if (req.query.brand) query.brand = new RegExp(req.query.brand as string, 'i');
   if (req.query.location) query.location = new RegExp(req.query.location as string, 'i');
   if (req.query.maxPrice) query.pricePerDay = { $lte: Number(req.query.maxPrice) };
   if (req.query.fuelType) query.fuelType = req.query.fuelType;
@@ -112,13 +112,13 @@ export const getCar = async (req: AuthRequest, res: Response): Promise<void> => 
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, description, make, model, year, location, pricePerDay]
+ *             required: [title, description, brand, model, year, location, pricePerDay]
  *             properties:
  *               title:
  *                 type: string
  *               description:
  *                 type: string
- *               make:
+ *               brand:
  *                 type: string
  *               model:
  *                 type: string
@@ -150,11 +150,11 @@ export const getCar = async (req: AuthRequest, res: Response): Promise<void> => 
  *         description: Unauthorized
  */
 export const createCar = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { title, description, make, model, year, color, seats, transmission, fuelType, location, pricePerDay } =
+  const { title, description, brand, model, year, color, seats, transmission, fuelType, location, pricePerDay } =
     req.body;
 
-  if (!title?.trim() || !description?.trim() || !make?.trim() || !model?.trim() || !year || !location?.trim() || !pricePerDay) {
-    res.status(400).json({ message: 'Required fields: title, description, make, model, year, location, pricePerDay' });
+  if (!title?.trim() || !description?.trim() || !brand?.trim() || !model?.trim() || !year || !location?.trim() || !pricePerDay) {
+    res.status(400).json({ message: 'Required fields: title, description, brand, model, year, location, pricePerDay' });
     return;
   }
 
@@ -162,7 +162,7 @@ export const createCar = async (req: AuthRequest, res: Response): Promise<void> 
     owner: req.userId,
     title: title.trim(),
     description: description.trim(),
-    make: make.trim(),
+    brand: brand.trim(),
     model: model.trim(),
     year: Number(year),
     color: color?.trim(),
