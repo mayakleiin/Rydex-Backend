@@ -1,9 +1,9 @@
-import { Response } from 'express';
-import fs from 'fs';
-import path from 'path';
-import { AuthRequest } from '../middleware/authMiddleware';
-import Car from '../models/Car';
-import Comment from '../models/Comment';
+import { Response } from "express";
+import fs from "fs";
+import path from "path";
+import { AuthRequest } from "../middleware/authMiddleware";
+import Car from "../models/Car";
+import Comment from "../models/Comment";
 
 /**
  * @swagger
@@ -36,15 +36,20 @@ import Comment from '../models/Comment';
  *       200:
  *         description: Paginated list of cars
  */
-export const getCars = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getCars = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
-  if (req.query.brand) query.brand = new RegExp(req.query.brand as string, 'i');
-  if (req.query.location) query.location = new RegExp(req.query.location as string, 'i');
-  if (req.query.maxPrice) query.pricePerDay = { $lte: Number(req.query.maxPrice) };
+  if (req.query.brand) query.brand = new RegExp(req.query.brand as string, "i");
+  if (req.query.location)
+    query.location = new RegExp(req.query.location as string, "i");
+  if (req.query.maxPrice)
+    query.pricePerDay = { $lte: Number(req.query.maxPrice) };
   if (req.query.fuelType) query.fuelType = req.query.fuelType;
   if (req.query.transmission) query.transmission = req.query.transmission;
 
@@ -53,12 +58,12 @@ export const getCars = async (req: AuthRequest, res: Response): Promise<void> =>
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('owner', 'username profileImage'),
+      .populate("owner", "username profileImage"),
     Car.countDocuments(query),
   ]);
 
   const commentsPerCar = await Promise.all(
-    cars.map((car) => Comment.countDocuments({ car: car._id }))
+    cars.map((car) => Comment.countDocuments({ car: car._id })),
   );
 
   const carsWithMeta = cars.map((car, i) => ({
@@ -66,7 +71,12 @@ export const getCars = async (req: AuthRequest, res: Response): Promise<void> =>
     commentsCount: commentsPerCar[i],
   }));
 
-  res.json({ cars: carsWithMeta, total, page, totalPages: Math.ceil(total / limit) });
+  res.json({
+    cars: carsWithMeta,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  });
 };
 
 /**
@@ -87,10 +97,16 @@ export const getCars = async (req: AuthRequest, res: Response): Promise<void> =>
  *       404:
  *         description: Car not found
  */
-export const getCar = async (req: AuthRequest, res: Response): Promise<void> => {
-  const car = await Car.findById(req.params.id).populate('owner', 'username profileImage');
+export const getCar = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  const car = await Car.findById(req.params.id).populate(
+    "owner",
+    "username profileImage",
+  );
   if (!car) {
-    res.status(404).json({ message: 'Car not found' });
+    res.status(404).json({ message: "Car not found" });
     return;
   }
 
@@ -112,7 +128,7 @@ export const getCar = async (req: AuthRequest, res: Response): Promise<void> => 
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [title, description, brand, model, year, location, pricePerDay]
+ *             required: [title, description, brand, model, year, transmission, fuelType, pricePerDay]
  *             properties:
  *               title:
  *                 type: string
@@ -123,17 +139,19 @@ export const getCar = async (req: AuthRequest, res: Response): Promise<void> => 
  *               model:
  *                 type: string
  *               year:
- *                 type: integer
+ *                 type: string
+ *                 description: 4-digit year (e.g., 2020)
+ *                 pattern: '^\d{4}$'
  *               color:
  *                 type: string
  *               seats:
  *                 type: integer
  *               transmission:
  *                 type: string
- *                 enum: [manual, automatic]
+ *                 enum: [Manual, Automatic, CVT, Robotic, DCT]
  *               fuelType:
  *                 type: string
- *                 enum: [gasoline, diesel, electric, hybrid]
+ *                 enum: [Gasoline, Diesel, Electric, Hybrid]
  *               location:
  *                 type: string
  *               pricePerDay:
@@ -145,37 +163,91 @@ export const getCar = async (req: AuthRequest, res: Response): Promise<void> => 
  *       201:
  *         description: Car listing created
  *       400:
- *         description: Missing required fields
+ *         description: Missing required fields or invalid year format
  *       401:
  *         description: Unauthorized
  */
-export const createCar = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { title, description, brand, model, year, color, seats, transmission, fuelType, location, pricePerDay } =
-    req.body;
+export const createCar = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  const {
+    title,
+    description,
+    brand,
+    model,
+    year,
+    color,
+    seats,
+    transmission,
+    fuelType,
+    location,
+    pricePerDay,
+    features: rawFeatures,
+    rules: rawRules,
+  } = req.body;
 
-  if (!title?.trim() || !description?.trim() || !brand?.trim() || !model?.trim() || !year || !location?.trim() || !pricePerDay) {
-    res.status(400).json({ message: 'Required fields: title, description, brand, model, year, location, pricePerDay' });
+  if (
+    !title?.trim() ||
+    !description?.trim() ||
+    !brand?.trim() ||
+    !model?.trim() ||
+    !year ||
+    !/^\d{4}$/.test(String(year)) ||
+    !transmission ||
+    !fuelType ||
+    !pricePerDay
+  ) {
+    res.status(400).json({
+      message:
+        "Required fields: title, description, brand, model, year (4 digits), transmission, fuelType, pricePerDay",
+    });
     return;
   }
 
-  const car = await Car.create({
-    owner: req.userId,
-    title: title.trim(),
-    description: description.trim(),
-    brand: brand.trim(),
-    model: model.trim(),
-    year: Number(year),
-    color: color?.trim(),
-    seats: seats ? Number(seats) : undefined,
-    transmission,
-    fuelType,
-    location: location.trim(),
-    pricePerDay: Number(pricePerDay),
-    image: req.file?.filename || '',
-  });
+  let features = [];
+  let rules = {};
 
-  await car.populate('owner', 'username profileImage');
-  res.status(201).json(car);
+  try {
+    if (typeof rawFeatures === "string") {
+      features = JSON.parse(rawFeatures);
+    } else if (Array.isArray(rawFeatures)) {
+      features = rawFeatures;
+    }
+
+    if (typeof rawRules === "string") {
+      rules = JSON.parse(rawRules);
+    } else if (typeof rawRules === "object") {
+      rules = rawRules;
+    }
+  } catch (err) {
+    // If parsing fails, continue with defaults
+  }
+
+  try {
+    const car = await Car.create({
+      owner: req.userId,
+      title: title.trim(),
+      description: description.trim(),
+      brand: brand.trim(),
+      model: model.trim(),
+      year: Number(year),
+      color: color?.trim(),
+      seats: seats ? Number(seats) : undefined,
+      transmission,
+      fuelType,
+      location: location?.trim(),
+      pricePerDay: Number(pricePerDay),
+      image: req.file?.filename || "",
+      features,
+      rules,
+    });
+
+    await car.populate("owner", "username profileImage");
+    res.status(201).json(car);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || "Failed to create car listing" });
+  }
 };
 
 /**
@@ -200,36 +272,46 @@ export const createCar = async (req: AuthRequest, res: Response): Promise<void> 
  *       404:
  *         description: Car not found
  */
-export const updateCar = async (req: AuthRequest, res: Response): Promise<void> => {
+export const updateCar = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const car = await Car.findById(req.params.id);
   if (!car) {
-    res.status(404).json({ message: 'Car not found' });
+    res.status(404).json({ message: "Car not found" });
     return;
   }
 
   if (car.owner.toString() !== req.userId) {
-    res.status(403).json({ message: 'Not authorized' });
+    res.status(403).json({ message: "Not authorized" });
     return;
   }
 
   const updates: Record<string, unknown> = { ...req.body };
   // Convert numeric fields
-  if (updates.year) updates.year = Number(updates.year);
+  if (updates.year) {
+    if (!/^\d{4}$/.test(String(updates.year))) {
+      res.status(400).json({
+        message: "Year must be exactly 4 digits",
+      });
+      return;
+    }
+    updates.year = Number(updates.year);
+  }
   if (updates.pricePerDay) updates.pricePerDay = Number(updates.pricePerDay);
   if (updates.seats) updates.seats = Number(updates.seats);
 
   if (req.file) {
     if (car.image) {
-      const oldPath = path.join(process.cwd(), 'uploads', car.image);
+      const oldPath = path.join(process.cwd(), "uploads", car.image);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
     updates.image = req.file.filename;
   }
 
-  const updated = await Car.findByIdAndUpdate(req.params.id, updates, { new: true }).populate(
-    'owner',
-    'username profileImage'
-  );
+  const updated = await Car.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+  }).populate("owner", "username profileImage");
 
   res.json(updated);
 };
@@ -256,27 +338,30 @@ export const updateCar = async (req: AuthRequest, res: Response): Promise<void> 
  *       404:
  *         description: Car not found
  */
-export const deleteCar = async (req: AuthRequest, res: Response): Promise<void> => {
+export const deleteCar = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const car = await Car.findById(req.params.id);
   if (!car) {
-    res.status(404).json({ message: 'Car not found' });
+    res.status(404).json({ message: "Car not found" });
     return;
   }
 
   if (car.owner.toString() !== req.userId) {
-    res.status(403).json({ message: 'Not authorized' });
+    res.status(403).json({ message: "Not authorized" });
     return;
   }
 
   if (car.image) {
-    const imagePath = path.join(process.cwd(), 'uploads', car.image);
+    const imagePath = path.join(process.cwd(), "uploads", car.image);
     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
   }
 
   await car.deleteOne();
   await Comment.deleteMany({ car: req.params.id });
 
-  res.json({ message: 'Car listing deleted' });
+  res.json({ message: "Car listing deleted" });
 };
 
 /**
@@ -299,10 +384,13 @@ export const deleteCar = async (req: AuthRequest, res: Response): Promise<void> 
  *       404:
  *         description: Car not found
  */
-export const toggleLike = async (req: AuthRequest, res: Response): Promise<void> => {
+export const toggleLike = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const car = await Car.findById(req.params.id);
   if (!car) {
-    res.status(404).json({ message: 'Car not found' });
+    res.status(404).json({ message: "Car not found" });
     return;
   }
 
