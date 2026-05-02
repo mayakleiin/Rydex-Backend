@@ -162,8 +162,6 @@ export const getCar = async (
  *                 type: string
  *                 description: 4-digit year (e.g., 2020)
  *                 pattern: '^\d{4}$'
- *               color:
- *                 type: string
  *               seats:
  *                 type: integer
  *               transmission:
@@ -197,7 +195,6 @@ export const createCar = async (
     brand,
     model,
     year,
-    color,
     seats,
     transmission,
     fuelType,
@@ -250,7 +247,6 @@ export const createCar = async (
       brand: brand.trim(),
       model: model.trim(),
       year: Number(year),
-      color: color?.trim(),
       seats: seats ? Number(seats) : undefined,
       transmission,
       fuelType,
