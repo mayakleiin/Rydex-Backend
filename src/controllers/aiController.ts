@@ -70,22 +70,7 @@ export const searchCars = async (
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const prompt = `You are a car search assistant. Extract search parameters from this natural language query: "${query}"
-
-Return ONLY a valid JSON object with these optional fields:
-- make: string (car brand, e.g. "Toyota", "Tesla", "BMW")
-- transmission: "manual" or "automatic" (only if explicitly mentioned)
-- fuelType: "gasoline", "diesel", "electric", or "hybrid" (only if mentioned)
-- maxPrice: number (max price per day in NIS, extract if mentioned)
-- minSeats: number (minimum seats, extract if mentioned)
-- location: string (city or area in Israel)
-- keywords: string[] (other search terms like car type)
-
-Examples:
-"electric car in Tel Aviv under 300" → {"fuelType":"electric","location":"Tel Aviv","maxPrice":300}
-"automatic Toyota with 7 seats" → {"make":"Toyota","transmission":"automatic","minSeats":7}
-
-Return only the JSON object, no explanation or markdown.`;
+      const prompt = `You are a car search assistant. Extract search parameters from this natural language query: "${query}"`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
