@@ -70,7 +70,16 @@ export const searchCars = async (
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const prompt = `You are a car search assistant. Extract search parameters from this natural language query: "${query}"`;
+      const prompt = `You are a car rental search assistant. Extract search parameters from this natural language query: "${query}"
+Return ONLY a JSON object with these optional fields:
+- brand: car brand/make (string)
+- model: car model (string)
+- transmission: "Manual", "Automatic", "CVT", "Robotic", or "DCT"
+- fuelType: "Gasoline", "Diesel", "Electric", or "Hybrid"
+- maxPrice: maximum price per day (number)
+- minSeats: minimum number of seats (number)
+- location: city or location (string)
+Return only the JSON, no explanation.`;
 
       const result = await model.generateContent(prompt);
       const text = result.response.text().trim();
@@ -86,8 +95,10 @@ export const searchCars = async (
 
   // Build MongoDB query from extracted parameters
   const mongoQuery: Record<string, unknown> = {};
-  if (searchParams.make)
-    mongoQuery.make = new RegExp(searchParams.make as string, "i");
+  if (searchParams.brand)
+    mongoQuery.brand = new RegExp(searchParams.brand as string, "i");
+  if (searchParams.model)
+    mongoQuery.model = new RegExp(searchParams.model as string, "i");
   if (searchParams.transmission)
     mongoQuery.transmission = searchParams.transmission;
   if (searchParams.fuelType) mongoQuery.fuelType = searchParams.fuelType;
@@ -102,7 +113,7 @@ export const searchCars = async (
     mongoQuery.$or = [
       { title: new RegExp(query, "i") },
       { description: new RegExp(query, "i") },
-      { make: new RegExp(query, "i") },
+      { brand: new RegExp(query, "i") },
       { model: new RegExp(query, "i") },
       { location: new RegExp(query, "i") },
     ];
