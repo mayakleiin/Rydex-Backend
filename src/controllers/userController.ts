@@ -63,11 +63,53 @@ export const getUser = async (req: AuthRequest, res: Response): Promise<void> =>
  *       403:
  *         description: Not authorized
  */
-export const updateUser = async (req: AuthRequest, res: Response): Promise<void> => {
-  if (req.userId !== req.params.id) {
-    res.status(403).json({ message: 'Not authorized' });
-    return;
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { username, email } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update username
+    if (username) {
+      user.username = username;
+    }
+
+    // Update email
+    if (email) {
+      // Basic email validation
+      const emailRegex = /^\S+@\S+\.\S+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Check if email already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== userId) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+
+      user.email = email;
+    }
+
+    // Update profile image if exists
+    if (req.file) {
+      user.profileImage = req.file.filename;
+    }
+
+    await user.save();
+
+    res.json({
+      message: "User updated successfully",
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
   }
+};
 
   const { username } = req.body;
   const updates: { username?: string; profileImage?: string } = {};
