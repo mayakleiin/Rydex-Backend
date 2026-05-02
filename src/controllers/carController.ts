@@ -181,6 +181,8 @@ export const createCar = async (
     fuelType,
     location,
     pricePerDay,
+    features,
+    rules,
   } = req.body;
 
   if (
@@ -189,14 +191,14 @@ export const createCar = async (
     !brand?.trim() ||
     !model?.trim() ||
     !year ||
-    !location?.trim() ||
-    !pricePerDay
+    !transmission ||
+    !fuelType
   ) {
     res
       .status(400)
       .json({
         message:
-          "Required fields: title, description, brand, model, year, location, pricePerDay",
+          "Required fields: title, description, brand, model, year, transmission, fuelType",
       });
     return;
   }
@@ -212,9 +214,11 @@ export const createCar = async (
     seats: seats ? Number(seats) : undefined,
     transmission,
     fuelType,
-    location: location.trim(),
-    pricePerDay: Number(pricePerDay),
+    location: location?.trim(),
+    pricePerDay: pricePerDay ? Number(pricePerDay) : undefined,
     image: req.file?.filename || "",
+    features: features || [],
+    rules: rules || {},
   });
 
   await car.populate("owner", "username profileImage");

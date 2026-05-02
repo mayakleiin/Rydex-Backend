@@ -5,15 +5,22 @@ export interface ICar {
   title: string;
   description: string;
   brand: string;
-  model: string; // car model name, e.g. "Model 3", "Corolla"
+  model: string;
   year: number;
   color?: string;
   seats?: number;
-  transmission?: "manual" | "automatic" | "cvt" | "robotic" | "dct";
-  fuelType?: "gasoline" | "diesel" | "electric" | "hybrid";
-  location: string;
-  pricePerDay: number;
+  transmission: "manual" | "automatic" | "cvt" | "robotic" | "dct";
+  fuelType: "gasoline" | "diesel" | "electric" | "hybrid";
+  location?: string;
+  pricePerDay?: number;
   image: string;
+  features?: string[];
+  rules?: {
+    noSmoking?: boolean;
+    noPets?: boolean;
+    minAge?: string;
+    cleanRecord?: boolean;
+  };
   likes: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -32,14 +39,23 @@ const carSchema = new Schema<ICar>(
     transmission: {
       type: String,
       enum: ["manual", "automatic", "cvt", "robotic", "dct"],
+      required: true,
     },
     fuelType: {
       type: String,
       enum: ["gasoline", "diesel", "electric", "hybrid"],
+      required: true,
     },
-    location: { type: String, required: true, trim: true },
-    pricePerDay: { type: Number, required: true },
+    location: { type: String, trim: true },
+    pricePerDay: { type: Number },
     image: { type: String, default: "" },
+    features: [{ type: String }],
+    rules: {
+      noSmoking: { type: Boolean },
+      noPets: { type: Boolean },
+      minAge: { type: String },
+      cleanRecord: { type: Boolean },
+    },
     likes: [{ type: String }],
   },
   { timestamps: true },

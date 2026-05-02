@@ -1,9 +1,9 @@
-import { Response } from 'express';
-import fs from 'fs';
-import path from 'path';
-import { AuthRequest } from '../middleware/authMiddleware';
-import User from '../models/User';
-import Car from '../models/Car';
+import { Response } from "express";
+import fs from "fs";
+import path from "path";
+import { AuthRequest } from "../middleware/authMiddleware";
+import User from "../models/User";
+import Car from "../models/Car";
 
 /**
  * @swagger
@@ -23,10 +23,15 @@ import Car from '../models/Car';
  *       404:
  *         description: User not found
  */
-export const getUser = async (req: AuthRequest, res: Response): Promise<void> => {
-  const user = await User.findById(req.params.id).select('-password -refreshTokens -googleId');
+export const getUser = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
+  const user = await User.findById(req.params.id).select(
+    "-password -refreshTokens -googleId",
+  );
   if (!user) {
-    res.status(404).json({ message: 'User not found' });
+    res.status(404).json({ message: "User not found" });
     return;
   }
   res.json(user);
@@ -63,54 +68,10 @@ export const getUser = async (req: AuthRequest, res: Response): Promise<void> =>
  *       403:
  *         description: Not authorized
  */
-export const updateUser = async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user.id;
-    const { username, email } = req.body;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Update username
-    if (username) {
-      user.username = username;
-    }
-
-    // Update email
-    if (email) {
-      // Basic email validation
-      const emailRegex = /^\S+@\S+\.\S+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "Invalid email format" });
-      }
-
-      // Check if email already exists
-      const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser._id.toString() !== userId) {
-        return res.status(400).json({ message: "Email already in use" });
-      }
-
-      user.email = email;
-    }
-
-    // Update profile image if exists
-    if (req.file) {
-      user.profileImage = req.file.filename;
-    }
-
-    await user.save();
-
-    res.json({
-      message: "User updated successfully",
-      user,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
+export const updateUser = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const { username } = req.body;
   const updates: { username?: string; profileImage?: string } = {};
 
@@ -119,19 +80,19 @@ export const updateUser = async (req: Request, res: Response) => {
   if (req.file) {
     // Delete old profile image if it's a local file (not a URL)
     const user = await User.findById(req.params.id);
-    if (user?.profileImage && !user.profileImage.startsWith('http')) {
-      const oldPath = path.join(process.cwd(), 'uploads', user.profileImage);
+    if (user?.profileImage && !user.profileImage.startsWith("http")) {
+      const oldPath = path.join(process.cwd(), "uploads", user.profileImage);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
     updates.profileImage = req.file.filename;
   }
 
-  const updated = await User.findByIdAndUpdate(req.params.id, updates, { new: true }).select(
-    '-password -refreshTokens -googleId'
-  );
+  const updated = await User.findByIdAndUpdate(req.params.id, updates, {
+    new: true,
+  }).select("-password -refreshTokens -googleId");
 
   if (!updated) {
-    res.status(404).json({ message: 'User not found' });
+    res.status(404).json({ message: "User not found" });
     return;
   }
 
@@ -162,7 +123,10 @@ export const updateUser = async (req: Request, res: Response) => {
  *       200:
  *         description: Paginated list of user's car listings
  */
-export const getUserCars = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getUserCars = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<void> => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
@@ -172,7 +136,7 @@ export const getUserCars = async (req: AuthRequest, res: Response): Promise<void
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate('owner', 'username profileImage'),
+      .populate("owner", "username profileImage"),
     Car.countDocuments({ owner: req.params.id }),
   ]);
 
