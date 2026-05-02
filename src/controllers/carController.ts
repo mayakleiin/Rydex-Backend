@@ -246,7 +246,9 @@ export const createCar = async (
     await car.populate("owner", "username profileImage");
     res.status(201).json(car);
   } catch (err: any) {
-    res.status(500).json({ message: err.message || "Failed to create car listing" });
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to create car listing" });
   }
 };
 
@@ -277,6 +279,7 @@ export const updateCar = async (
   res: Response,
 ): Promise<void> => {
   const car = await Car.findById(req.params.id);
+
   if (!car) {
     res.status(404).json({ message: "Car not found" });
     return;
@@ -287,35 +290,62 @@ export const updateCar = async (
     return;
   }
 
-  const updates: Record<string, unknown> = { ...req.body };
-  // Convert numeric fields
-  if (updates.year) {
+  const updates: Record<string, any> = { ...req.body };
+  const unsetFields: Record<string, ""> = {};
+
+  if (updates.year !== undefined) {
     if (!/^\d{4}$/.test(String(updates.year))) {
-      res.status(400).json({
-        message: "Year must be exactly 4 digits",
-      });
+      res.status(400).json({ message: "Year must be exactly 4 digits" });
       return;
     }
+
     updates.year = Number(updates.year);
   }
-  if (updates.pricePerDay) updates.pricePerDay = Number(updates.pricePerDay);
-  if (updates.seats) updates.seats = Number(updates.seats);
+
+  if (updates.pricePerDay !== undefined) {
+    updates.pricePerDay = Number(updates.pricePerDay);
+  }
+
+  if (updates.seats === "") {
+    delete updates.seats;
+    unsetFields.seats = "";
+  } else if (updates.seats !== undefined) {
+    updates.seats = Number(updates.seats);
+  }
+
+  if (updates.location === "") {
+    updates.location = "";
+  }
+
+  if (typeof updates.features === "string") {
+    updates.features = JSON.parse(updates.features);
+  }
+
+  if (typeof updates.rules === "string") {
+    updates.rules = JSON.parse(updates.rules);
+  }
 
   if (req.file) {
     if (car.image) {
       const oldPath = path.join(process.cwd(), "uploads", car.image);
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
+
     updates.image = req.file.filename;
   }
 
-  const updated = await Car.findByIdAndUpdate(req.params.id, updates, {
+  const updateQuery =
+    Object.keys(unsetFields).length > 0
+      ? { $set: updates, $unset: unsetFields }
+      : { $set: updates };
+
+  const updated = await Car.findByIdAndUpdate(req.params.id, updateQuery, {
     new: true,
+    runValidators: true,
   }).populate("owner", "username profileImage");
 
   res.json(updated);
 };
-
 /**
  * @swagger
  * /cars/{id}:
