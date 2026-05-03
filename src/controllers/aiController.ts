@@ -82,16 +82,32 @@ Return ONLY a JSON object with these optional fields:
 Return only the JSON, no explanation.`;
 
       const result = await model.generateContent(prompt);
+      console.log("AI RAW RESPONSE:", result.response.text());
       const text = result.response.text().trim();
 
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         searchParams = JSON.parse(jsonMatch[0]);
       }
-    } catch {
-      // AI failed - fall back to basic text search
+    } catch (err) {
+      console.error("[AI Search] Gemini API error:", err);
+      // AI failed - fall back to keyword search
     }
   }
+
+  const FUEL_MAP: Record<string, string> = {
+    gasoline: "Gasoline", petrol: "Gasoline", benzine: "Gasoline",
+    diesel: "Diesel",
+    electric: "Electric",
+    hybrid: "Hybrid",
+  };
+  const TRANS_MAP: Record<string, string> = {
+    automatic: "Automatic", auto: "Automatic",
+    manual: "Manual",
+    cvt: "CVT",
+    robotic: "Robotic",
+    dct: "DCT",
+  };
 
   // Build MongoDB query from extracted parameters
   const mongoQuery: Record<string, unknown> = {};
@@ -99,24 +115,44 @@ Return only the JSON, no explanation.`;
     mongoQuery.brand = new RegExp(searchParams.brand as string, "i");
   if (searchParams.model)
     mongoQuery.model = new RegExp(searchParams.model as string, "i");
-  if (searchParams.transmission)
-    mongoQuery.transmission = searchParams.transmission;
-  if (searchParams.fuelType) mongoQuery.fuelType = searchParams.fuelType;
+  if (searchParams.transmission) {
+    const normalized = TRANS_MAP[(searchParams.transmission as string).toLowerCase()];
+    if (normalized) mongoQuery.transmission = normalized;
+  }
+  if (searchParams.fuelType) {
+    const normalized = FUEL_MAP[(searchParams.fuelType as string).toLowerCase()];
+    if (normalized) mongoQuery.fuelType = normalized;
+  }
   if (searchParams.maxPrice)
     mongoQuery.pricePerDay = { $lte: searchParams.maxPrice };
   if (searchParams.minSeats) mongoQuery.seats = { $gte: searchParams.minSeats };
   if (searchParams.location)
     mongoQuery.location = new RegExp(searchParams.location as string, "i");
 
-  // If no structured params extracted, fall back to text search
+  // If Gemini extracted nothing, detect structured fields from keywords then fall back to text search
   if (Object.keys(mongoQuery).length === 0) {
-    mongoQuery.$or = [
-      { title: new RegExp(query, "i") },
-      { description: new RegExp(query, "i") },
-      { brand: new RegExp(query, "i") },
-      { model: new RegExp(query, "i") },
-      { location: new RegExp(query, "i") },
-    ];
+    const q = query.toLowerCase();
+
+    const fuelMatch = Object.keys(FUEL_MAP).find((k) => q.includes(k));
+    if (fuelMatch) mongoQuery.fuelType = FUEL_MAP[fuelMatch];
+
+    const transMatch = Object.keys(TRANS_MAP).find((k) => q.includes(k));
+    if (transMatch) mongoQuery.transmission = TRANS_MAP[transMatch];
+
+    const seatMatch = q.match(/(\d+)\s*seat/);
+    if (seatMatch) mongoQuery.seats = { $gte: parseInt(seatMatch[1]) };
+
+    if (Object.keys(mongoQuery).length === 0) {
+      const keywords = query.trim().split(/\s+/).filter((w: string) => w.length > 3);
+      const searchTerms = keywords.length > 0 ? keywords : [query.trim()];
+      mongoQuery.$or = searchTerms.flatMap((word: string) => [
+        { title: new RegExp(word, "i") },
+        { description: new RegExp(word, "i") },
+        { brand: new RegExp(word, "i") },
+        { model: new RegExp(word, "i") },
+        { location: new RegExp(word, "i") },
+      ]);
+    }
   }
 
   const cars = await Car.find(mongoQuery)
