@@ -1,3 +1,4 @@
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "@jest/globals";
 import request from "supertest";
 import mongoose from "mongoose";
 import app from "../app";
@@ -22,7 +23,7 @@ describe("Cars API", () => {
   const carData = {
     title: "Tesla Model 3 for rent",
     description: "Great electric car, barely used",
-    make: "Tesla",
+    brand: "Tesla",
     model: "Model 3",
     year: "2022",
     location: "Tel Aviv",
@@ -33,22 +34,18 @@ describe("Cars API", () => {
   };
 
   beforeAll(async () => {
-    const ownerRes = await request(app)
-      .post("/auth/register")
-      .send({
-        username: "carowner",
-        email: "owner@example.com",
-        password: "password123",
-      });
+    const ownerRes = await request(app).post("/auth/register").send({
+      username: "carowner",
+      email: "owner@example.com",
+      password: "password123",
+    });
     accessToken = ownerRes.body.accessToken;
 
-    const otherRes = await request(app)
-      .post("/auth/register")
-      .send({
-        username: "otheruser",
-        email: "other@example.com",
-        password: "password123",
-      });
+    const otherRes = await request(app).post("/auth/register").send({
+      username: "otheruser",
+      email: "other@example.com",
+      password: "password123",
+    });
     otherToken = otherRes.body.accessToken;
   });
 
@@ -68,7 +65,7 @@ describe("Cars API", () => {
         .set("Authorization", `Bearer ${accessToken}`)
         .send(carData);
       expect(res.status).toBe(201);
-      expect(res.body.make).toBe("Tesla");
+      expect(res.body.brand).toBe("Tesla");
       expect(res.body.owner).toBeDefined();
     });
 
@@ -103,11 +100,11 @@ describe("Cars API", () => {
       expect(Array.isArray(res.body.cars)).toBe(true);
     });
 
-    it("should support filtering by make", async () => {
-      const res = await request(app).get("/cars?make=Tesla");
+    it("should support filtering by brand", async () => {
+      const res = await request(app).get("/cars?brand=Tesla");
       expect(res.status).toBe(200);
       expect(
-        res.body.cars.every((c: { make: string }) => c.make === "Tesla"),
+        res.body.cars.every((c: { brand: string }) => c.brand === "Tesla"),
       ).toBe(true);
     });
   });

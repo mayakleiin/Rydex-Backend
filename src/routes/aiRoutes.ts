@@ -1,5 +1,6 @@
-import { Router } from 'express';
-import { searchCars } from '../controllers/aiController';
+import { Router } from "express";
+import { searchCars } from "../controllers/aiController";
+import { aiRateLimiter } from "../middleware/aiRateLimiter";
 
 /**
  * @swagger
@@ -9,6 +10,6 @@ import { searchCars } from '../controllers/aiController';
  */
 const router = Router();
 
-router.post('/search', searchCars);
+router.post("/search", aiRateLimiter, searchCars);
 
 export default router;

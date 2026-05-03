@@ -17,24 +17,22 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
     credentials: true,
   }),
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(passport.initialize());
 
-// Setup Google OAuth strategy
 setupPassport();
 
-// Serve uploaded images as static files
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
-// API Routes
+// Old routes - keep for local tests/dev
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/cars", carRoutes);
@@ -42,15 +40,20 @@ app.use("/comments", commentRoutes);
 app.use("/ai", aiRoutes);
 app.use("/bookings", bookingRoutes);
 
-// Swagger docs
+// Production API routes - use these from frontend on the college domain
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/cars", carRoutes);
+app.use("/api/comments", commentRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/bookings", bookingRoutes);
+
 setupSwagger(app);
 
-// 404 handler — must be before the error handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ message: "Route not found" });
 });
 
-// Global JSON error handler — must be last
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ message: err.message || "Internal server error" });
 });
