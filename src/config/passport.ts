@@ -65,7 +65,7 @@ export const setupPassport = (): void => {
         {
           clientID: process.env.FACEBOOK_CLIENT_ID!,
           clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-          callbackURL: `${serverUrl}/auth/facebook/callback`,
+          callbackURL: process.env.FACEBOOK_CALLBACK_URL || `${serverUrl}/auth/facebook/callback`,
           profileFields: ["id", "displayName", "photos", "email"],
         },
         async (_accessToken, _refreshToken, profile, done) => {
