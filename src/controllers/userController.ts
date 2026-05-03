@@ -73,6 +73,11 @@ export const updateUser = async (
   req: AuthRequest,
   res: Response,
 ): Promise<void> => {
+  if (req.userId !== req.params.id) {
+    res.status(403).json({ message: "Not authorized to update this user" });
+    return;
+  }
+
   const { username } = req.body;
   const updates: { username?: string; profileImage?: string } = {};
 
