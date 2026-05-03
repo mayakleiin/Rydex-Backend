@@ -4,6 +4,7 @@ import path from "path";
 import { AuthRequest } from "../middleware/authMiddleware";
 import User from "../models/User";
 import Car from "../models/Car";
+import Comment from "../models/Comment";
 
 /**
  * @swagger
@@ -140,5 +141,14 @@ export const getUserCars = async (
     Car.countDocuments({ owner: req.params.id }),
   ]);
 
-  res.json({ cars, total, page, totalPages: Math.ceil(total / limit) });
+  const commentsPerCar = await Promise.all(
+    cars.map((car) => Comment.countDocuments({ car: car._id })),
+  );
+
+  const carsWithMeta = cars.map((car, i) => ({
+    ...car.toObject(),
+    commentsCount: commentsPerCar[i],
+  }));
+
+  res.json({ cars: carsWithMeta, total, page, totalPages: Math.ceil(total / limit) });
 };
