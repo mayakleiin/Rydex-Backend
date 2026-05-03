@@ -46,7 +46,7 @@ if (existingBooking) {
       returnDate,
       status: 'pending',
     });
-
+    console.log("test")
     await booking.populate([
       { path: 'car', select: 'title brand model year image images pricePerDay' },
       { path: 'renter', select: 'username email profileImage' },
